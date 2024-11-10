@@ -1,0 +1,28 @@
+---
+title: "Final Project Code"
+author: "Rebecca Hazen, Kunwu Lyu, and Jackson Rankin"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = T, error=FALSE, message=FALSE, warning=FALSE)
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(ggResidpanel)
+library(broom)
+library(patchwork)
+library(purrr)
+library(car)
+library(corrplot)
+library(MASS)
+```
+
+## Data Wrangling
+
+```{r}
+hospital <- read_csv(file = "hospitals.csv") %>% 
+  janitor::clean_names() 
+```
+
