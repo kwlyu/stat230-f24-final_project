@@ -17,12 +17,51 @@ library(purrr)
 library(car)
 library(corrplot)
 library(MASS)
+library(plotly)
 ```
 
 ## Data Wrangling
 
-```{r}
+```{r Reading Data}
 hospital <- read_csv(file = "hospitals.csv") %>% 
-  janitor::clean_names() 
+  janitor::clean_names() %>% 
+  mutate(avg_major_cost = rowMeans(across(c(procedure_heart_attack_cost, 
+                                          procedure_heart_failure_cost, 
+                                          procedure_pneumonia_cost, 
+                                          procedure_hip_knee_cost)), 
+                                          na.rm = TRUE))
+
+hospital_dat <- hospital %>%
+  dplyr::select(-facility_name, -facility_city, -facility_state, -(13:24)) %>%
+  filter(avg_major_cost != 0, rating_overall > 0, facility_type != "Unknown") %>%
+  mutate(across(where(is.character), ~ str_replace_all(., "None", NA_character_))) %>% 
+  drop_na()
+```
+
+## EDA
+
+```{r}
+ggplot(data = hospital_dat, aes(x = facility_type, y = rating_overall)) + 
+  geom_boxplot()
+
+ggplot(data = hospital_dat, aes(x = rating_overall, fill = facility_type)) +
+  geom_bar(position = "stack") +
+  labs(x = "Rating Overall", y = "Count", fill = "Facility Type")
+
+ggplot(data = hospital_dat, 
+       aes(x = rating_overall, y = avg_major_cost, color = facility_type)) + 
+  geom_point(alpha = 0.3, position = position_jitter()) +
+  geom_smooth(method = "lm")
+```
+
+## OLS
+
+```{r}
+cost_lm <- lm(avg_major_cost ~ rating_overall*facility_type, 
+              data = hospital_dat)
+summary(cost_lm)
+
+resid_panel(cost_lm, plots = c("hist", "qq", "resid"), smoother = T)
+resid_xpanel(cost_lm, smoother = T)
 ```
 
