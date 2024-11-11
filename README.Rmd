@@ -21,6 +21,7 @@ Data obtained from [CORGIS](https://corgis-edu.github.io/corgis/csv/hospitals/);
 
 ## Data Wrangling
 
+The `avg_major_cost` is the average of the four procedures listed.
 ```{r Reading Data}
 hospital <- read_csv(file = "hospitals.csv") %>% 
   janitor::clean_names() %>% 

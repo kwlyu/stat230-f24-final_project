@@ -6,6 +6,8 @@ also access from
 
 ## Data Wrangling
 
+The `avg_major_cost` is the average of the four procedures listed.
+
 ``` r
 hospital <- read_csv(file = "hospitals.csv") %>% 
   janitor::clean_names() %>% 
