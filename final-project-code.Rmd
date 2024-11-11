@@ -65,3 +65,16 @@ resid_panel(cost_lm, plots = c("hist", "qq", "resid"), smoother = T)
 resid_xpanel(cost_lm, smoother = T)
 ```
 
+```{r}
+df <- hospital_dat %>% dplyr::select(-1, -10)
+
+# Count the occurrences of "Above", "Same", and "Below" in each row
+df$Above_count <- rowSums(df[,2:8] == "Above")
+df$Same_count <- rowSums(df[,2:8] == "Same")
+df$Below_count <- rowSums(df[,2:8] == "Below")
+
+# Solving the system of equations
+model <- lm(rating_overall ~ Above_count + Same_count + Below_count - 1, data = df)
+summary(model)
+```
+
