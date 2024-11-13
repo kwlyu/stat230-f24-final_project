@@ -51,7 +51,7 @@ happiness_recode <- happiness_cleaned %>%
 
 ## EDA
 
-```{r}
+```{r Boxplots and Barplots}
 ggpairs(happiness_cleaned)
 
 # Density plot for happiness by commute time
@@ -90,7 +90,7 @@ ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
 
 ## Logistic Regression
 
-```{r}
+```{r Base Model}
 happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender, 
                      data = happiness_recode, family = binomial)
 

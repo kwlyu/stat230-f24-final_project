@@ -40,7 +40,7 @@ happiness_recode <- happiness_cleaned %>%
 ggpairs(happiness_cleaned)
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
+![](README_files/figure-gfm/Boxplots%20and%20Barplots-1.png)<!-- -->
 
 ``` r
 # Density plot for happiness by commute time
@@ -51,7 +51,7 @@ ggplot(happiness_cleaned, aes(x = happy, y = commute, fill = happy)) +
        fill = "Happiness Level")
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-1-2.png)<!-- -->
+![](README_files/figure-gfm/Boxplots%20and%20Barplots-2.png)<!-- -->
 
 ``` r
 # Boxplot of income by happiness level
@@ -63,7 +63,7 @@ ggplot(happiness_cleaned, aes(x = happy, y = realrinc, fill = happy)) +
        fill = "Happiness Level")
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-1-3.png)<!-- -->
+![](README_files/figure-gfm/Boxplots%20and%20Barplots-3.png)<!-- -->
 
 ``` r
 # Bar plot of happiness level by education level
@@ -76,7 +76,7 @@ ggplot(happiness_cleaned, aes(x = educ, fill = happy)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-1-4.png)<!-- -->
+![](README_files/figure-gfm/Boxplots%20and%20Barplots-4.png)<!-- -->
 
 ``` r
 # Faceted bar plot for happiness levels by race and gender
@@ -89,7 +89,7 @@ ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
        fill = "Happiness Level")
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-1-5.png)<!-- -->
+![](README_files/figure-gfm/Boxplots%20and%20Barplots-5.png)<!-- -->
 
 ## Logistic Regression
 
