@@ -1,106 +1,126 @@
 
-Data obtained from
-[CORGIS](https://corgis-edu.github.io/corgis/csv/hospitals/); you can
-also access from
-[here](https://data.cms.gov/provider-data/?redirect=true).
+Data obtained from [GSS Data
+Explorer](https://gssdataexplorer.norc.org/); you can also access it in
+within [this
+repository](https://raw.githubusercontent.com/kwlyu/stat230-f24-final-project/main/GSS_commute_happiness.csv).
 
 ## Data Wrangling
 
-The `avg_major_cost` is the average of the four procedures listed.
-
 ``` r
-hospital <- read_csv(file = "hospitals.csv") %>% 
-  janitor::clean_names() %>% 
-  mutate(avg_major_cost = rowMeans(across(c(procedure_heart_attack_cost, 
-                                          procedure_heart_failure_cost, 
-                                          procedure_pneumonia_cost, 
-                                          procedure_hip_knee_cost)), 
-                                          na.rm = TRUE))
+happiness_raw <- read_csv("GSS_commute_happiness.csv")
 
-hospital_dat <- hospital %>%
-  dplyr::select(-facility_name, -facility_city, -facility_state, -(13:24)) %>%
-  filter(avg_major_cost != 0, rating_overall > 0, facility_type != "Unknown") %>%
-  mutate(across(where(is.character), ~ str_replace_all(., "None", NA_character_))) %>% 
-  drop_na()
+happiness_cleaned <- happiness_raw %>%
+  select(year, happy, commute, realrinc, educ, race, gender1) %>% 
+  filter(commute != ".i:  Inapplicable",
+         realrinc > 0,
+         happy != ".n:  No answer") %>% 
+  mutate(
+    educ = case_when(
+      str_detect(educ, "grade") ~ as.numeric(str_extract(educ, "\\d+")),
+      str_detect(educ, "college") ~ as.numeric(str_extract(educ, "\\d+")) + 12,
+      str_detect(educ, "No formal schooling") ~ 0,
+      TRUE ~ NA
+    ),
+    commute = case_when(
+      str_detect(commute, "\\d+") ~ as.numeric(str_extract(commute, "\\d+")),
+      TRUE ~ NA
+    ),
+    race = if_else(race == "White", "White", "Non White"),
+    gender = if_else(gender1 == "MALE", "Male", "Female")
+  ) %>% 
+  select(-gender1)
+
+happiness_recode <- happiness_cleaned %>% 
+  mutate(happy = if_else(happy == "Not too happy", 0, 1))
 ```
 
 ## EDA
 
 ``` r
-ggplot(data = hospital_dat, aes(x = facility_type, y = rating_overall)) + 
-  geom_boxplot()
+ggpairs(happiness_cleaned)
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
 
 ``` r
-ggplot(data = hospital_dat, aes(x = rating_overall, fill = facility_type)) +
-  geom_bar(position = "stack") +
-  labs(x = "Rating Overall", y = "Count", fill = "Facility Type")
+# Density plot for happiness by commute time
+ggplot(happiness_cleaned, aes(x = happy, y = commute, fill = happy)) +
+  geom_boxplot() +
+  labs(title = "Commute Time Distribution by Happiness Level", 
+       x = "Commute Time (minutes)", 
+       fill = "Happiness Level")
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-1-2.png)<!-- -->
 
 ``` r
-ggplot(data = hospital_dat, 
-       aes(x = rating_overall, y = avg_major_cost, color = facility_type)) + 
-  geom_point(alpha = 0.3, position = position_jitter()) +
-  geom_smooth(method = "lm")
+# Boxplot of income by happiness level
+ggplot(happiness_cleaned, aes(x = happy, y = realrinc, fill = happy)) +
+  geom_boxplot() +
+  labs(title = "Income Distribution by Happiness Level", 
+       x = "Happiness Level", 
+       y = "Real Income",
+       fill = "Happiness Level")
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-1-3.png)<!-- -->
 
-## OLS
+``` r
+# Bar plot of happiness level by education level
+ggplot(happiness_cleaned, aes(x = educ, fill = happy)) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Happiness Levels by Education Level", 
+       x = "Education Level", 
+       y = "Proportion",
+       fill = "Happiness Level") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+![](README_files/figure-gfm/unnamed-chunk-1-4.png)<!-- -->
 
 ``` r
-cost_lm <- lm(avg_major_cost ~ rating_overall*facility_type, 
-              data = hospital_dat)
-summary(cost_lm)
+# Faceted bar plot for happiness levels by race and gender
+ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ race) +
+  labs(title = "Proportion of Happiness by Race and Gender", 
+       x = "Gender", 
+       y = "Proportion",
+       fill = "Happiness Level")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-1-5.png)<!-- -->
+
+## Logistic Regression
+
+``` r
+happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender, 
+                     data = happiness_recode, family = binomial)
+
+summary(happiness_glm)
 ```
 
     ## 
     ## Call:
-    ## lm(formula = avg_major_cost ~ rating_overall * facility_type, 
-    ##     data = hospital_dat)
-    ## 
-    ## Residuals:
-    ##      Min       1Q   Median       3Q      Max 
-    ## -12240.8   -474.6    709.5   1676.7   6345.0 
+    ## glm(formula = happy ~ commute + realrinc + educ + race + gender, 
+    ##     family = binomial, data = happiness_recode)
     ## 
     ## Coefficients:
-    ##                                         Estimate Std. Error t value Pr(>|t|)
-    ## (Intercept)                             20316.36     555.95  36.544   <2e-16
-    ## rating_overall                           -290.77     167.13  -1.740   0.0820
-    ## facility_typeGovernment                 -1609.91     705.31  -2.283   0.0226
-    ## facility_typePrivate                     -416.72     605.20  -0.689   0.4912
-    ## facility_typeProprietary                  375.89     657.32   0.572   0.5675
-    ## rating_overall:facility_typeGovernment     67.79     223.73   0.303   0.7619
-    ## rating_overall:facility_typePrivate        28.92     182.41   0.159   0.8740
-    ## rating_overall:facility_typeProprietary  -213.48     207.24  -1.030   0.3031
-    ##                                            
-    ## (Intercept)                             ***
-    ## rating_overall                          .  
-    ## facility_typeGovernment                 *  
-    ## facility_typePrivate                       
-    ## facility_typeProprietary                   
-    ## rating_overall:facility_typeGovernment     
-    ## rating_overall:facility_typePrivate        
-    ## rating_overall:facility_typeProprietary    
+    ##               Estimate Std. Error z value Pr(>|z|)   
+    ## (Intercept)  1.2207687  0.6436418   1.897  0.05787 . 
+    ## commute     -0.0013295  0.0075192  -0.177  0.85965   
+    ## realrinc     0.0000373  0.0000118   3.161  0.00157 **
+    ## educ        -0.0002136  0.0463060  -0.005  0.99632   
+    ## raceWhite    0.0111056  0.3322843   0.033  0.97334   
+    ## genderMale   0.7433165  0.2509178   2.962  0.00305 **
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 2758 on 2096 degrees of freedom
-    ## Multiple R-squared:  0.03699,    Adjusted R-squared:  0.03377 
-    ## F-statistic:  11.5 on 7 and 2096 DF,  p-value: 2.115e-14
-
-``` r
-resid_panel(cost_lm, plots = c("hist", "qq", "resid"), smoother = T)
-```
-
-![](README_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
-
-``` r
-resid_xpanel(cost_lm, smoother = T)
-```
-
-![](README_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
+    ## (Dispersion parameter for binomial family taken to be 1)
+    ## 
+    ##     Null deviance: 530.41  on 873  degrees of freedom
+    ## Residual deviance: 503.81  on 868  degrees of freedom
+    ##   (19 observations deleted due to missingness)
+    ## AIC: 515.81
+    ## 
+    ## Number of Fisher Scoring iterations: 6
