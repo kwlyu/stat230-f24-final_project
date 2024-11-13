@@ -1,8 +1,10 @@
 
 Data obtained from [GSS Data
-Explorer](https://gssdataexplorer.norc.org/); you can also access it in
-within [this
+Explorer](https://gssdataexplorer.norc.org/). The original data set can
+be accessed within [this
 repository](https://raw.githubusercontent.com/kwlyu/stat230-f24-final_project/main/GSS_commute_happiness.csv).
+A cleaned version is also in
+[here](https://raw.githubusercontent.com/kwlyu/stat230-f24-final_project/main/happiness_recode.csv).
 
 ## Data Wrangling
 
