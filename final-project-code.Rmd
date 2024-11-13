@@ -18,6 +18,7 @@ library(car)
 library(corrplot)
 library(MASS)
 library(plotly)
+library(gridExtra)
 ```
 
 ## Data Wrangling
@@ -88,6 +89,45 @@ ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
        y = "Proportion",
        fill = "Happiness Level")
 ```
+
+```{r}
+# Boxplot for happiness by commute time
+plot1 <- ggplot(happiness_cleaned, aes(x = happy, y = commute, fill = happy)) +
+  geom_boxplot() +
+  labs(title = "Commute Time Distribution by Happiness Level",  
+       x = "Commute Time (minutes)", 
+       fill = "Happiness Level")
+
+# Boxplot of income by happiness level
+plot2 <- ggplot(happiness_cleaned, aes(x = happy, y = realrinc, fill = happy)) +
+  geom_boxplot() +
+  labs(title = "Income Distribution by Happiness Level", 
+       x = "Happiness Level", 
+       y = "Real Income", 
+       fill = "Happiness Level")
+
+# Bar plot of happiness level by education level
+plot3 <- ggplot(happiness_cleaned, aes(x = educ, fill = happy)) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Happiness Levels by Education Level", 
+       x = "Education Level", 
+       y = "Proportion", 
+       fill = "Happiness Level") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Faceted bar plot for happiness levels by race and gender
+plot4 <- ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ race) +
+  labs(title = "Proportion of Happiness by Race and Gender", 
+       x = "Gender", 
+       y = "Proportion", 
+       fill = "Happiness Level")
+
+# Arrange all plots in a 2x2 grid
+grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
+```
+
 
 ## Logistic Regression
 

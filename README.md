@@ -2,7 +2,7 @@
 Data obtained from [GSS Data
 Explorer](https://gssdataexplorer.norc.org/); you can also access it in
 within [this
-repository](https://raw.githubusercontent.com/kwlyu/stat230-f24-final-project/main/GSS_commute_happiness.csv).
+repository](https://raw.githubusercontent.com/kwlyu/stat230-f24-final_project/main/GSS_commute_happiness.csv).
 
 ## Data Wrangling
 
