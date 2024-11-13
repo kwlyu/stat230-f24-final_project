@@ -23,10 +23,8 @@ happiness_cleaned <- happiness_raw %>%
       str_detect(educ, "No formal schooling") ~ 0,
       TRUE ~ NA
     ),
-    commute = case_when(
-      str_detect(commute, "\\d+") ~ as.numeric(str_extract(commute, "\\d+")),
-      TRUE ~ NA
-    ),
+    commute = if_else(str_detect(commute, "\\d+"), 
+                      as.numeric(str_extract(commute, "\\d+")), NA),
     race = if_else(race == "White", "White", "Non White"),
     gender = if_else(gender1 == "MALE", "Male", "Female")
   ) %>% 
