@@ -31,7 +31,10 @@ happiness_cleaned <- happiness_raw %>%
   select(-gender1)
 
 happiness_recode <- happiness_cleaned %>% 
-  mutate(happy = if_else(happy == "Not too happy", 0, 1))
+  mutate(happy = if_else(happy == "Not too happy", 0, 1)) %>% 
+  drop_na() 
+
+write.csv(happiness_recode, file = "happiness_recode.csv")
 ```
 
 ## EDA
@@ -95,7 +98,7 @@ ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
 
 ``` r
 happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender, 
-                     data = happiness_recode, family = binomial)
+                     data = happiness_recode, family = quasibinomial)
 
 summary(happiness_glm)
 ```
@@ -103,24 +106,23 @@ summary(happiness_glm)
     ## 
     ## Call:
     ## glm(formula = happy ~ commute + realrinc + educ + race + gender, 
-    ##     family = binomial, data = happiness_recode)
+    ##     family = quasibinomial, data = happiness_recode)
     ## 
     ## Coefficients:
-    ##               Estimate Std. Error z value Pr(>|z|)   
-    ## (Intercept)  1.2207687  0.6436418   1.897  0.05787 . 
-    ## commute     -0.0013295  0.0075192  -0.177  0.85965   
-    ## realrinc     0.0000373  0.0000118   3.161  0.00157 **
-    ## educ        -0.0002136  0.0463060  -0.005  0.99632   
-    ## raceWhite    0.0111056  0.3322843   0.033  0.97334   
-    ## genderMale   0.7433165  0.2509178   2.962  0.00305 **
+    ##               Estimate Std. Error t value Pr(>|t|)   
+    ## (Intercept)  1.221e+00  6.479e-01   1.884  0.05987 . 
+    ## commute     -1.330e-03  7.569e-03  -0.176  0.86061   
+    ## realrinc     3.730e-05  1.188e-05   3.140  0.00174 **
+    ## educ        -2.136e-04  4.661e-02  -0.005  0.99635   
+    ## raceWhite    1.111e-02  3.345e-01   0.033  0.97352   
+    ## genderMale   7.433e-01  2.526e-01   2.943  0.00334 **
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
+    ## (Dispersion parameter for quasibinomial family taken to be 1.013288)
     ## 
     ##     Null deviance: 530.41  on 873  degrees of freedom
     ## Residual deviance: 503.81  on 868  degrees of freedom
-    ##   (19 observations deleted due to missingness)
-    ## AIC: 515.81
+    ## AIC: NA
     ## 
     ## Number of Fisher Scoring iterations: 6

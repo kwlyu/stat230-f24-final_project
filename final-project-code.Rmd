@@ -38,17 +38,18 @@ happiness_cleaned <- happiness_raw %>%
       str_detect(educ, "No formal schooling") ~ 0,
       TRUE ~ NA
     ),
-    commute = case_when(
-      str_detect(commute, "\\d+") ~ as.numeric(str_extract(commute, "\\d+")),
-      TRUE ~ NA
-    ),
+    commute = if_else(str_detect(commute, "\\d+"), 
+                      as.numeric(str_extract(commute, "\\d+")), NA),
     race = if_else(race == "White", "White", "Non White"),
     gender = if_else(gender1 == "MALE", "Male", "Female")
   ) %>% 
   select(-gender1)
 
 happiness_recode <- happiness_cleaned %>% 
-  mutate(happy = if_else(happy == "Not too happy", 0, 1))
+  mutate(happy = if_else(happy == "Not too happy", 0, 1)) %>% 
+  drop_na() 
+
+write.csv(happiness_recode, file = "happiness_recode.csv")
 ```
 
 ## EDA
@@ -133,7 +134,7 @@ grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
 
 ```{r}
 happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender, 
-                     data = happiness_recode, family = binomial)
+                     data = happiness_recode, family = quasibinomial)
 
 summary(happiness_glm)
 ```
