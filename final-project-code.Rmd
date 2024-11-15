@@ -139,3 +139,11 @@ happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender,
 summary(happiness_glm)
 ```
 
+
+##### Becca's section
+
+
+```{r}
+#3# test
+```
+
