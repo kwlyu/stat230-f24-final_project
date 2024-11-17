@@ -19,6 +19,7 @@ library(corrplot)
 library(MASS)
 library(plotly)
 library(gridExtra)
+library(rlang)
 ```
 
 ## Data Wrangling
@@ -134,11 +135,60 @@ grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
 
 ```{r}
 happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender, 
-                     data = happiness_recode, family = quasibinomial)
+                     data = happiness_recode, family = binomial)
 
 summary(happiness_glm)
+vif(happiness_glm)
 ```
 
+```{r}
+empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
+  # Convert strings to symbols
+  quant_group <- rlang::sym(quant_var)
+  cat_group <- rlang::sym(cat_var)
+  
+  happiness_ag <- happiness_recode %>% 
+    mutate(quant_grouped = 
+             ntile(!!quant_group, n = 10) # Group the quantitative variable into 10 groups
+    ) %>% 
+    group_by(quant_grouped, !!cat_group) %>%
+    summarize(
+      quant_gp_median = median(!!quant_group), # Calculate median within each group
+      p = sum(happy == 1) / n(), # Proportion happy
+      log_odds = log(p / (1 - p)), # Avoid log issues
+      .groups = "drop" # Avoid warning about grouping
+    )
+  
+  # Add a column for x_var based on the scale
+  happiness_ag <- happiness_ag %>%
+    mutate(x_var = if (scale == "log") log(quant_gp_median) else quant_gp_median)
+  
+  # Set the x-axis label
+  x_lab <- str_c(if (scale == "log") "Log Median of " else "Median of ", quant_var)
+  
+  # Plot using precomputed x_var
+  ggplot(happiness_ag, 
+         aes(x = x_var, y = log_odds, color = !!cat_group)) + 
+    geom_point() +
+    labs(x = x_lab, y = "Empirical Log Odds")
+}
+
+
+# Iterate over all different combinations
+# vars to iterate over
+quant_vars <- c("commute", "realrinc", "educ")
+cat_vars <- c("gender", "race")
+# init empty list to store
+empirical_log_odds_plot <- list()
+for (quant_var in quant_vars) {
+  for (cat_var in cat_vars) {
+    # Generate the plot and store it in the list
+    plot_name <- paste(quant_var, cat_var, sep = "_")
+    empirical_log_odds_plot[[plot_name]] <- empirical_plot_fn(quant_var = quant_var, cat_var = cat_var)
+  }
+}
+empirical_log_odds_plot
+```
 
 ##### Becca's section
 
