@@ -188,6 +188,9 @@ for (quant_var in quant_vars) {
   }
 }
 empirical_log_odds_plot
+  #Notes (by Jackson for Interaction Reference)
+    #Concern for interaction between commute and gender
+      #Concern for interaction between education and gender
 ```
 
 ##### Becca's section
@@ -201,7 +204,35 @@ empirical_log_odds_plot
 ### Jackson's Section
 
 ```{r}
+#EDA implies need to log both commute time and income level to reduce skew
+  #Remove 0 values
+    #
+happiness_glm_refit<-glm(happy ~ log(commute) + log(realrinc) + educ + race,
+                         data=happiness_recode, family=binomial)
+#Refit model with interaction terms inspired from EDA
+happiness_glm_gender<-glm(
+  happy ~ commute*gender + realrinc + educ*gender + race, 
+  data=happiness_recode, family=binomial)
+summary(happiness_glm_gender)
+  #Interaction Terms appear weak
+anova(happiness_glm, happiness_glm_gender)
+  #Inclusion of interaction terms has no statistically discernible impact
+    #on model explanatory power
+#
 
-#Test
+happiness_aug<-augment(happiness_glm, resid.type="pearson")
+
+
+ggplot(data=happiness_aug, aes(x=commute, y=.resid))+
+  geom_point()+
+  geom_hline(yintercept=0, linetype="dotted")+
+  labs(x="Commute Time (minutes)", y="Pearson Residuals", 
+       title="Residual Plot of Commute Time")
+
+ggplot(data=happiness_aug, aes(x=realrinc, y=.resid))+
+  geom_point()+
+  geom_hline(yintercept=0, linetype="dotted")+
+  labs(x="Commute Time (minutes)", y="Pearson Residuals", 
+       title="Residual Plot of Commute Time")
 ```
 
