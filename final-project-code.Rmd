@@ -139,6 +139,18 @@ happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender,
 
 summary(happiness_glm)
 vif(happiness_glm)
+happiness_aug1 <- augment(happiness_glm, data=happiness_recode,
+                          type.residuals="pearson")
+
+happiness_aug1$C_grps <- ntile(happiness_recode$commute, n = 20)
+happiness_resid1 <- happiness_aug1 %>%
+  group_by(C_grps) %>%
+  summarize(C_grps_median = median(C_grps), # median D of groups
+            resid_mean = mean(.resid)) # mean residual
+
+ggplot(happiness_resid1, aes(x = C_grps_median, y = resid_mean)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0)
 ```
 
 ```{r}
