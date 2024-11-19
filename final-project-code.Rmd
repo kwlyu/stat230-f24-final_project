@@ -151,6 +151,16 @@ happiness_resid1 <- happiness_aug1 %>%
 ggplot(happiness_resid1, aes(x = C_grps_median, y = resid_mean)) + 
   geom_point() + 
   geom_hline(yintercept = 0)
+
+happiness_aug1$Y_grps <- ntile(happiness_recode$realrinc, n = 20)
+happiness_resid2 <- happiness_aug1 %>%
+  group_by(Y_grps) %>%
+  summarize(Y_grps_median = median(Y_grps), # median D of groups
+            resid_mean = mean(.resid)) # mean residual
+
+ggplot(happiness_resid2, aes(x = Y_grps_median, y = resid_mean)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0)
 ```
 
 ```{r}
