@@ -172,7 +172,7 @@ empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
   happiness_ag <- happiness_recode %>% 
     group_by(!!quant_group, !!cat_group) %>% 
     summarize(
-      p = (sum(happy == 1)) / (n()), # Proportion happy
+      p = sum(happy == 1) / n(), # Proportion happy
       log_odds = log(p / (1 - p)), # Avoid log issues
       .groups = "drop" # Avoid warning about grouping
     )
@@ -188,7 +188,6 @@ empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
   ggplot(happiness_ag, 
          aes(x = x_var, y = log_odds, color = !!cat_group)) + 
     geom_point() +
-    geom_smooth(method = "lm", se = F) +
     labs(x = x_lab, y = "Empirical Log Odds")
 }
 
@@ -207,8 +206,6 @@ for (quant_var in quant_vars) {
   }
 }
 empirical_log_odds_plot
-(empirical_log_odds_plot$commute_gender | empirical_log_odds_plot$commute_race) / (empirical_log_odds_plot$realrinc_gender | empirical_log_odds_plot$realrinc_race) / (empirical_log_odds_plot$educ_gender | empirical_log_odds_plot$educ_race)
-
 ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
   geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
   labs(y = "Happy", x = "Commute Time", color = "Gender") +
@@ -237,15 +234,8 @@ ggplot(happiness_recode, aes(x = educ, y = happy, color = gender)) +
 ### Jackson's Section
 
 ```{r}
-#EDA implies need to log both commute time and income level to reduce skew
-  #Remove 0 values
-happiness_glm_refit<-
-  glm(happy ~ log(commute+1) + log(realrinc+1) + educ + race +gender,
-                         data=happiness_recode, family=binomial)
-summary(happiness_glm_refit)
-vif(happiness_glm_refit) #Looks good, suprisingly no problem with educ and Y
-
-#Refit model with interaction terms inspired from EDA
+#EDA implies possible interaction between gender and education,
+    #and gender and commute time
 happiness_glm_gender<-
   glm(happy ~ log(commute+1)*gender + log(realrinc+1) + educ*gender + race, 
                           data=happiness_recode, family=binomial)
@@ -255,43 +245,116 @@ summary(happiness_glm_gender)
 #Test for Interaction Term Significance
 anova(happiness_glm_refit, happiness_glm_gender)
   #Inclusion of interaction terms has no statistically discernible impact
-    #on model explanatory power
+    #on model explanatory power, continue with base model
 
-#Augment regression and prepare binning for residual plots
-happiness_aug<-augment(happiness_glm_refit, resid.type="pearson")
+#Base Model Assumption Analysis: Residual Plots
+happinessBase_aug<-augment(happiness_glm, resid.type="pearson")
   #Commute
-happiness_aug$CommuteGroups<-ntile(happiness_aug$`log(commute + 1)`, n=75)
-happiness_aug_resid1<- happiness_aug %>%
+happinessBase_aug$CommuteGroups<-ntile(happinessBase_aug$commute, n=75)
+happinessBase_aug_resid1<- happinessBase_aug %>%
   group_by(CommuteGroups) %>%
-    summarize(CommuteGroupsMed = median(`log(commute + 1)`),
+    summarize(CommuteGroupsMed = median(commute),
               resid_mean=mean(.resid), resid_med=median(.resid))
   #Education
-happiness_aug$EducGroups<-ntile(happiness_aug$educ, n=75)
-happiness_aug_resid2<- happiness_aug %>%
+happinessBase_aug$EducGroups<-ntile(happinessBase_aug$educ, n=75)
+happinessBase_aug_resid2<- happinessBase_aug %>%
   group_by(EducGroups) %>%
     summarize(EducGroupsMed = median(educ),
               resid_mean=mean(.resid), resid_med=median(.resid))
   #Income
-happiness_aug$YGroups<-ntile(happiness_aug$`log(realrinc + 1)`, n=75)
-happiness_aug_resid3<- happiness_aug %>%
+happinessBase_aug$YGroups<-ntile(happinessBase_aug$realrinc, n=75)
+happinessBase_aug_resid3<- happinessBase_aug %>%
   group_by(YGroups) %>%
-    summarize(YGroupsMed = median(`log(realrinc + 1)`),
+    summarize(YGroupsMed = median(realrinc),
               resid_mean=mean(.resid), resid_med=median(.resid))
 
 #Assumption Checking: Residual Plots
   #Commute Time
-ggplot(data=happiness_aug_resid1, aes(x=CommuteGroups, y=resid_mean))+
+ggplot(data=happinessBase_aug_resid1, aes(x=CommuteGroups, y=resid_mean))+
   geom_point()+
   geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
   labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
        title="Residual Plot of Grouped Commute Time")
   #Education
-ggplot(data=happiness_aug_resid2, aes(x=EducGroups, y=resid_mean))+
+ggplot(data=happinessBase_aug_resid2, aes(x=EducGroups, y=resid_mean))+
   geom_point()+
   geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
   labs(x="Grouped Education levels", y="Mean Pearson Residual", 
        title="Residual Plot of Grouped Education Level")
   #Income
+ggplot(data=happinessBase_aug_resid3, aes(x=YGroups, y=resid_mean))+
+  geom_point()+
+  geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
+  labs(x="Grouped Annual Income Levels (1986 dollars)", 
+       y="Mean Pearson Residual", 
+       title="Residual Plot of Grouped Income Level")
+  #Across all plots general concern about possible outliers skew, 
+    #Also very slight possible downward trend in Income plot
+
+  #Analysis of Case Influence Statistics for Refit Model
+happinessBase_aug <- happinessBase_aug %>% mutate(case = row_number())
+    #Check Cook's Distances
+ggplot(happinessBase_aug, aes(x=case, y=.cooksd))+
+  geom_point()+
+  labs(x="Index", y="Cook's Distance", 
+       title="Cooks Distances for Model")#No apparent concerning values >1
+    #Examine Studentized Residuals
+ggplot(happinessBase_aug, aes(x=case, y=.std.resid))+
+  geom_point()+
+  geom_hline(yintercept=c(-3,3), linetype="dotted", color="red")+
+  labs(x="Index", y="Studentized Residual", 
+  title="Studentized Residuals for Original Model")
+    #How to deal with this? Groups like previous?-->seems odd b/c looking for outliers
+  #Examine Leverage
+ggplot(happinessBase_aug, aes(x=case, y=.hat))+
+  geom_point()+
+  geom_hline(yintercept=6/874, linetype="dotted", color="red")+
+  labs(x="Index", y="Leverage", title="Leverage for Original Model")
+    #No particularly apparent outliers although many points above flagging range
+which(happinessBase_aug$.hat>6/874)
+
+
+#EDA implies possible need to log both commute time and income to reduce skew
+happiness_glm_refit<-
+  glm(happy ~ log(commute+1) + log(realrinc+1) + educ + race +gender,
+                         data=happiness_recode, family=binomial)
+summary(happiness_glm_refit)
+vif(happiness_glm_refit) #Looks good, suprisingly no problem with educ and Y
+  
+  #Augment regression and prepare binning for residual plots
+happiness_aug<-augment(happiness_glm_refit, resid.type="pearson")
+    #Commute
+happiness_aug$CommuteGroups<-ntile(happiness_aug$`log(commute + 1)`, n=75)
+happiness_aug_resid1<- happiness_aug %>%
+  group_by(CommuteGroups) %>%
+    summarize(CommuteGroupsMed = median(`log(commute + 1)`),
+              resid_mean=mean(.resid), resid_med=median(.resid))
+    #Education
+happiness_aug$EducGroups<-ntile(happiness_aug$educ, n=75)
+happiness_aug_resid2<- happiness_aug %>%
+  group_by(EducGroups) %>%
+    summarize(EducGroupsMed = median(educ),
+              resid_mean=mean(.resid), resid_med=median(.resid))
+    #Income
+happiness_aug$YGroups<-ntile(happiness_aug$`log(realrinc + 1)`, n=75)
+happiness_aug_resid3<- happiness_aug %>%
+  group_by(YGroups) %>%
+    summarize(YGroupsMed = median(`log(realrinc + 1)`),
+              resid_mean=mean(.resid), resid_med=median(.resid))
+  #Refit Model Assumption Checking: Residual Plots
+    #Commute Time
+ggplot(data=happiness_aug_resid1, aes(x=CommuteGroups, y=resid_mean))+
+  geom_point()+
+  geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
+  labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
+       title="Residual Plot of Grouped Commute Time")
+    #Education
+ggplot(data=happiness_aug_resid2, aes(x=EducGroups, y=resid_mean))+
+  geom_point()+
+  geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
+  labs(x="Grouped Education levels", y="Mean Pearson Residual", 
+       title="Residual Plot of Grouped Education Level")
+    #Income
 ggplot(data=happiness_aug_resid3, aes(x=YGroups, y=resid_mean))+
   geom_point()+
   geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
@@ -301,29 +364,43 @@ ggplot(data=happiness_aug_resid3, aes(x=YGroups, y=resid_mean))+
   #Across all plots general concern about possible outliers skew, 
     #Also very slight possible downward trend in Income plot
 
-#Analysis of Case Influence Statistics
+  #Analysis of Case Influence Statistics for Refit Model
 happiness_aug <- happiness_aug %>% mutate(case = row_number())
-
-  #Check Cook's Distances
+    #Check Cook's Distances
 ggplot(happiness_aug, aes(x=case, y=.cooksd))+
   geom_point()+
   labs(x="Index", y="Cook's Distance", 
-       title="Cooks Distances for Model")
-  #No apparently concerning values, all far below 1
-
-  #Examine Studentized Residuals
+       title="Cooks Distances for Model")#No apparent concerning values >1
+    #Examine Studentized Residuals
 ggplot(happiness_aug, aes(x=case, y=.std.resid))+
   geom_point()+
   geom_hline(yintercept=c(-3,3), linetype="dotted", color="red")+
   labs(x="Index", y="Studentized Residual", 
   title="Studentized Residuals for Original Model")
     #How to deal with this? Groups like previous?-->seems odd b/c looking for outliers
-
-#Examine Leverage
+  #Examine Leverage
 ggplot(happiness_aug, aes(x=case, y=.hat))+
   geom_point()+
   geom_hline(yintercept=6/874, linetype="dotted", color="red")+
   labs(x="Index", y="Leverage", title="Leverage for Original Model")
     #No particularly apparent outliers although many points above flagging range
+which(happiness_aug$.hat>6/874)
+  #Log model seems no better than base model is any respect, therefore use base
+
+#Model Uncertainty Quantification
+summary(happiness_glm)
+  #Generate Confidence Intervals
+CIB0<-(1.220)+c(-1,1)*qnorm(0.975)*(0.6436)
+CIB1<-(-0.001330)+c(-1,1)*qnorm(0.975)*(0.007519)
+CIB2<-(0.0000373)+c(-1,1)*qnorm(0.975)*(0.0000118)
+CIB3<-(0.-0.0002136)+c(-1,1)*qnorm(0.975)*(0.04631)
+CIB4<-(0.01111)+c(-1,1)*qnorm(0.975)*(0.3323)
+CIB5<-(0.7433)+c(-1,1)*qnorm(0.975)*(0.2509)
+CIB0
+CIB1
+CIB2
+CIB3
+CIB4
+CIB5
 ```
 
