@@ -170,12 +170,8 @@ empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
   cat_group <- rlang::sym(cat_var)
   
   happiness_ag <- happiness_recode %>% 
-    mutate(quant_grouped = 
-             ntile(!!quant_group, n = 10) # Group the quantitative variable into 10 groups
-    ) %>% 
-    group_by(quant_grouped, !!cat_group) %>%
+    group_by(!!quant_group, !!cat_group) %>% 
     summarize(
-      quant_gp_median = median(!!quant_group), # Calculate median within each group
       p = sum(happy == 1) / n(), # Proportion happy
       log_odds = log(p / (1 - p)), # Avoid log issues
       .groups = "drop" # Avoid warning about grouping
@@ -183,10 +179,10 @@ empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
   
   # Add a column for x_var based on the scale
   happiness_ag <- happiness_ag %>%
-    mutate(x_var = if (scale == "log") log(quant_gp_median) else quant_gp_median)
+    mutate(x_var = if (scale == "log") log(!!quant_group) else !!quant_group)
   
   # Set the x-axis label
-  x_lab <- str_c(if (scale == "log") "Log Median of " else "Median of ", quant_var)
+  x_lab <- str_c(if (scale == "log") "Log of " else "", quant_var)
   
   # Plot using precomputed x_var
   ggplot(happiness_ag, 
@@ -210,6 +206,18 @@ for (quant_var in quant_vars) {
   }
 }
 empirical_log_odds_plot
+ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
+  labs(y = "Happy", x = "Commute Time", color = "Gender") +
+  scale_y_continuous(breaks = c(0, 1))
+ggplot(happiness_recode, aes(x = realrinc, y = happy, color = gender)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
+  labs(y = "Happy", x = "Real Income", color = "Gender") +
+  scale_y_continuous(breaks = c(0, 1))
+ggplot(happiness_recode, aes(x = educ, y = happy, color = gender)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
+  labs(y = "Happy", x = "Education", color = "Gender") +
+  scale_y_continuous(breaks = c(0, 1))
   #Notes (by Jackson for Interaction Reference)
     #Concern for interaction between commute and gender
       #Concern for interaction between education and gender
