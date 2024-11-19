@@ -172,7 +172,7 @@ empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
   happiness_ag <- happiness_recode %>% 
     group_by(!!quant_group, !!cat_group) %>% 
     summarize(
-      p = sum(happy == 1) / n(), # Proportion happy
+      p = (sum(happy == 1)) / (n()), # Proportion happy
       log_odds = log(p / (1 - p)), # Avoid log issues
       .groups = "drop" # Avoid warning about grouping
     )
@@ -188,6 +188,7 @@ empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
   ggplot(happiness_ag, 
          aes(x = x_var, y = log_odds, color = !!cat_group)) + 
     geom_point() +
+    geom_smooth(method = "lm", se = F) +
     labs(x = x_lab, y = "Empirical Log Odds")
 }
 
@@ -206,6 +207,8 @@ for (quant_var in quant_vars) {
   }
 }
 empirical_log_odds_plot
+(empirical_log_odds_plot$commute_gender | empirical_log_odds_plot$commute_race) / (empirical_log_odds_plot$realrinc_gender | empirical_log_odds_plot$realrinc_race) / (empirical_log_odds_plot$educ_gender | empirical_log_odds_plot$educ_race)
+
 ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
   geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
   labs(y = "Happy", x = "Commute Time", color = "Gender") +
