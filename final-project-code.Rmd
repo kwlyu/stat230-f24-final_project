@@ -234,35 +234,32 @@ ggplot(happiness_recode, aes(x = educ, y = happy, color = gender)) +
 ### Jackson's Section
 
 ```{r}
-#EDA implies possible interaction between gender and education,
-    #and gender and commute time
+#EDA implies possible interaction between gender and commute time
+  #and gender and education level, so test for that relationship
 happiness_glm_gender<-
-  glm(happy ~ log(commute+1)*gender + log(realrinc+1) + educ*gender + race, 
-                          data=happiness_recode, family=binomial)
+  glm(happy ~ commute*gender + realrinc+ + educ*gender + race, data=happiness_recode, family=binomial)
 summary(happiness_glm_gender)
-  #Interaction Terms appear weak
-
 #Test for Interaction Term Significance
-anova(happiness_glm_refit, happiness_glm_gender)
+anova(happiness_glm, happiness_glm_gender)
   #Inclusion of interaction terms has no statistically discernible impact
     #on model explanatory power, continue with base model
 
 #Base Model Assumption Analysis: Residual Plots
 happinessBase_aug<-augment(happiness_glm, resid.type="pearson")
   #Commute
-happinessBase_aug$CommuteGroups<-ntile(happinessBase_aug$commute, n=75)
+happinessBase_aug$CommuteGroups<-ntile(happinessBase_aug$commute, n=20)
 happinessBase_aug_resid1<- happinessBase_aug %>%
   group_by(CommuteGroups) %>%
     summarize(CommuteGroupsMed = median(commute),
               resid_mean=mean(.resid), resid_med=median(.resid))
   #Education
-happinessBase_aug$EducGroups<-ntile(happinessBase_aug$educ, n=75)
+happinessBase_aug$EducGroups<-ntile(happinessBase_aug$educ, n=20)
 happinessBase_aug_resid2<- happinessBase_aug %>%
   group_by(EducGroups) %>%
     summarize(EducGroupsMed = median(educ),
               resid_mean=mean(.resid), resid_med=median(.resid))
   #Income
-happinessBase_aug$YGroups<-ntile(happinessBase_aug$realrinc, n=75)
+happinessBase_aug$YGroups<-ntile(happinessBase_aug$realrinc, n=20)
 happinessBase_aug_resid3<- happinessBase_aug %>%
   group_by(YGroups) %>%
     summarize(YGroupsMed = median(realrinc),
@@ -272,7 +269,7 @@ happinessBase_aug_resid3<- happinessBase_aug %>%
   #Commute Time
 ggplot(data=happinessBase_aug_resid1, aes(x=CommuteGroups, y=resid_mean))+
   geom_point()+
-  geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
+  geom_hline(yintercept=0, linetype="dotted")+
   labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
        title="Residual Plot of Grouped Commute Time")
   #Education
