@@ -232,8 +232,17 @@ ggplot(happiness_recode, aes(x = educ, y = happy, color = gender)) +
 
 
 ### Jackson's Section
+### Model asumptions checking and fitting
 
 ```{r}
+#Fit the basic model
+happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender, 
+                     data = happiness_recode, family = binomial)
+summary(happiness_glm)
+vif(happiness_glm)
+happiness_aug1 <- augment(happiness_glm, data=happiness_recode,
+                          type.residuals="pearson")
+
 #EDA implies possible interaction between gender and commute time
   #and gender and education level, so test for that relationship
 happiness_glm_gender<-
@@ -245,72 +254,71 @@ anova(happiness_glm, happiness_glm_gender)
     #on model explanatory power, continue with base model
 
 #Base Model Assumption Analysis: Residual Plots
-happinessBase_aug<-augment(happiness_glm, resid.type="pearson")
-  #Commute
-happinessBase_aug$CommuteGroups<-ntile(happinessBase_aug$commute, n=20)
-happinessBase_aug_resid1<- happinessBase_aug %>%
-  group_by(CommuteGroups) %>%
-    summarize(CommuteGroupsMed = median(commute),
-              resid_mean=mean(.resid), resid_med=median(.resid))
-  #Education
-happinessBase_aug$EducGroups<-ntile(happinessBase_aug$educ, n=20)
-happinessBase_aug_resid2<- happinessBase_aug %>%
-  group_by(EducGroups) %>%
-    summarize(EducGroupsMed = median(educ),
-              resid_mean=mean(.resid), resid_med=median(.resid))
-  #Income
-happinessBase_aug$YGroups<-ntile(happinessBase_aug$realrinc, n=20)
-happinessBase_aug_resid3<- happinessBase_aug %>%
-  group_by(YGroups) %>%
-    summarize(YGroupsMed = median(realrinc),
-              resid_mean=mean(.resid), resid_med=median(.resid))
-
-#Assumption Checking: Residual Plots
-  #Commute Time
-ggplot(data=happinessBase_aug_resid1, aes(x=CommuteGroups, y=resid_mean))+
+  #Bin by Commute Time
+happiness_aug1$C_grps <- ntile(happiness_recode$commute, n = 20)
+happiness_resid1 <- happiness_aug1 %>%
+  group_by(C_grps) %>%
+  summarize(C_grps_median = median(commute), # median D of groups
+            resid_mean = mean(.resid)) # mean residual
+    #Commute Residual Plot
+ggplot(data=happiness_resid1, aes(x=C_grps, y=resid_mean))+
   geom_point()+
   geom_hline(yintercept=0, linetype="dotted")+
   labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
        title="Residual Plot of Grouped Commute Time")
-  #Education
-ggplot(data=happinessBase_aug_resid2, aes(x=EducGroups, y=resid_mean))+
-  geom_point()+
-  geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
-  labs(x="Grouped Education levels", y="Mean Pearson Residual", 
-       title="Residual Plot of Grouped Education Level")
-  #Income
-ggplot(data=happinessBase_aug_resid3, aes(x=YGroups, y=resid_mean))+
-  geom_point()+
-  geom_hline(yintercept=c(-2, 0, 2), linetype="dotted")+
-  labs(x="Grouped Annual Income Levels (1986 dollars)", 
-       y="Mean Pearson Residual", 
-       title="Residual Plot of Grouped Income Level")
-  #Across all plots general concern about possible outliers skew, 
-    #Also very slight possible downward trend in Income plot
 
-  #Analysis of Case Influence Statistics for Refit Model
-happinessBase_aug <- happinessBase_aug %>% mutate(case = row_number())
+  #Bin by Education Level
+happiness_aug1$E_grps <- ntile(happiness_recode$educ, n = 20)
+happiness_resid1 <- happiness_aug1 %>%
+  group_by(E_grps) %>%
+  summarize(E_grps_median = median(educ), # median D of groups
+            resid_mean = mean(.resid)) # mean residual
+    #Education Residual Plot
+ggplot(data=happiness_resid1, aes(x=E_grps, y=resid_mean))+
+  geom_point()+
+  geom_hline(yintercept=0, linetype="dotted")+
+  labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
+       title="Residual Plot of Grouped Commute Time")
+
+  #Bin by Income Level
+happiness_aug1$Y_grps <- ntile(happiness_recode$realrinc, n = 20)
+happiness_resid1 <- happiness_aug1 %>%
+  group_by(Y_grps) %>%
+  summarize(Y_grps_median = median(realrinc), # median D of groups
+            resid_mean = mean(.resid)) # mean residual
+    #Residual Plot of Income
+ggplot(data=happiness_resid1, aes(x=Y_grps, y=resid_mean))+
+  geom_point()+
+  geom_hline(yintercept=0, linetype="dotted")+
+  labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
+       title="Residual Plot of Grouped Commute Time")
+```
+
+### Analysis of Case Influence
+
+```{r}
+  #Analysis of Case Influence Statistics for Base Model
+happiness_aug1 <- happiness_aug1 %>% mutate(case = row_number())
+
     #Check Cook's Distances
-ggplot(happinessBase_aug, aes(x=case, y=.cooksd))+
+ggplot(happiness_aug1, aes(x=case, y=.cooksd))+
   geom_point()+
   labs(x="Index", y="Cook's Distance", 
        title="Cooks Distances for Model")#No apparent concerning values >1
-    #Examine Studentized Residuals
-ggplot(happinessBase_aug, aes(x=case, y=.std.resid))+
-  geom_point()+
-  geom_hline(yintercept=c(-3,3), linetype="dotted", color="red")+
-  labs(x="Index", y="Studentized Residual", 
-  title="Studentized Residuals for Original Model")
-    #How to deal with this? Groups like previous?-->seems odd b/c looking for outliers
   #Examine Leverage
-ggplot(happinessBase_aug, aes(x=case, y=.hat))+
+ggplot(happiness_aug1, aes(x=case, y=.hat))+
   geom_point()+
   geom_hline(yintercept=6/874, linetype="dotted", color="red")+
   labs(x="Index", y="Leverage", title="Leverage for Original Model")
     #No particularly apparent outliers although many points above flagging range
 which(happinessBase_aug$.hat>6/874)
+  #Don't consider studentized residuals because binary response, 
+    #Wouldn't make sense and binning would be counterintuitive
+```
 
+### Maybe cut: analysis of alternative log model
 
+```{r}
 #EDA implies possible need to log both commute time and income to reduce skew
 happiness_glm_refit<-
   glm(happy ~ log(commute+1) + log(realrinc+1) + educ + race +gender,
@@ -383,7 +391,11 @@ ggplot(happiness_aug, aes(x=case, y=.hat))+
     #No particularly apparent outliers although many points above flagging range
 which(happiness_aug$.hat>6/874)
   #Log model seems no better than base model is any respect, therefore use base
+```
 
+### Model Uncertainty Quantification
+
+```{r}
 #Model Uncertainty Quantification
 summary(happiness_glm)
   #Generate Confidence Intervals
