@@ -244,6 +244,8 @@ happiness_glm_int2 <- glm(happy ~ commute + (realrinc + educ) * race + gender,
 
 summary(happiness_glm_int2)
 
+anova(happiness_glm_base, happiness_glm_int2, test = "LRT")
+
 quant_resid_plot(happiness_glm_int2)
 ```
 
