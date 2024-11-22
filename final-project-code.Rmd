@@ -126,6 +126,10 @@ plot4 <- ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
        y = "Proportion", 
        fill = "Happiness Level")
 
+plot5 <- ggplot(happiness_cleaned, aes(x = commute, fill = happy)) + 
+  geom_bar(position = "fill") + 
+  facet_wrap(~ gender)
+
 # Arrange all plots in a 2x2 grid
 grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
 ```
@@ -206,18 +210,20 @@ for (quant_var in quant_vars) {
   }
 }
 empirical_log_odds_plot
-ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
+commute_v_gender <- ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
   geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
   labs(y = "Happy", x = "Commute Time", color = "Gender") +
+  scale_y_continuous(breaks = c(0, 1))
+edu_v_gender <- ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
+  labs(y = "Happy", x = "Education", color = "Gender") +
   scale_y_continuous(breaks = c(0, 1))
 ggplot(happiness_recode, aes(x = realrinc, y = happy, color = gender)) +
   geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
   labs(y = "Happy", x = "Real Income", color = "Gender") +
   scale_y_continuous(breaks = c(0, 1))
-ggplot(happiness_recode, aes(x = educ, y = happy, color = gender)) +
-  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
-  labs(y = "Happy", x = "Education", color = "Gender") +
-  scale_y_continuous(breaks = c(0, 1))
+
+(empirical_log_odds_plot$commute_gender | empirical_log_odds_plot$educ_gender) / (commute_v_gender | edu_v_gender)
   #Notes (by Jackson for Interaction Reference)
     #Concern for interaction between commute and gender
       #Concern for interaction between education and gender
