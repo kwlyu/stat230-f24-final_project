@@ -243,6 +243,8 @@ happiness_glm_int2 <- glm(happy ~ commute + (realrinc + educ) * race + gender,
                      data = happiness_recode, family = binomial)
 
 summary(happiness_glm_int2)
+
+quant_resid_plot(happiness_glm_int2)
 ```
 
 
@@ -336,7 +338,7 @@ ggplot(happiness_aug1, aes(x=case, y=.hat))+
   geom_hline(yintercept=6/874, linetype="dotted", color="red")+
   labs(x="Index", y="Leverage", title="Leverage for Original Model")
     #No particularly apparent outliers although many points above flagging range
-which(happinessBase_aug$.hat>6/874)
+which(happiness_aug1$.hat>6/874)
   #Don't consider studentized residuals because binary response, 
     #Wouldn't make sense and binning would be counterintuitive
 ```
