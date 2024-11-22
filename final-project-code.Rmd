@@ -236,8 +236,13 @@ quant_resid_plot <- function(model = happiness_glm_int) {
 }
 
 quant_resid_plot()
+```
 
+```{r}
+happiness_glm_int2 <- glm(happy ~ commute + (realrinc + educ) * race + gender, 
+                     data = happiness_recode, family = binomial)
 
+summary(happiness_glm_int2)
 ```
 
 
