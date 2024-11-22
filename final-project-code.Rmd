@@ -264,8 +264,8 @@ happiness_resid1 <- happiness_aug1 %>%
 ggplot(data=happiness_resid1, aes(x=C_grps, y=resid_mean))+
   geom_point()+
   geom_hline(yintercept=0, linetype="dotted")+
-  labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
-       title="Residual Plot of Grouped Commute Time")
+  labs(x="Commute Time (group average in minutes)", y="Mean Pearson Residual", 
+       title="Figure 3: Pearson Residual Plot of Grouped Commute Time")
 
   #Bin by Education Level
 happiness_aug1$E_grps <- ntile(happiness_recode$educ, n = 20)
@@ -277,8 +277,8 @@ happiness_resid1 <- happiness_aug1 %>%
 ggplot(data=happiness_resid1, aes(x=E_grps, y=resid_mean))+
   geom_point()+
   geom_hline(yintercept=0, linetype="dotted")+
-  labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
-       title="Residual Plot of Grouped Commute Time")
+  labs(x="Education Level (group average)", y="Mean Pearson Residual", 
+       title="Pearson Residual Plot of Grouped Education")
 
   #Bin by Income Level
 happiness_aug1$Y_grps <- ntile(happiness_recode$realrinc, n = 20)
@@ -290,8 +290,8 @@ happiness_resid1 <- happiness_aug1 %>%
 ggplot(data=happiness_resid1, aes(x=Y_grps, y=resid_mean))+
   geom_point()+
   geom_hline(yintercept=0, linetype="dotted")+
-  labs(x="Grouped Commute Times (minutes)", y="Mean Pearson Residual", 
-       title="Residual Plot of Grouped Commute Time")
+  labs(x="Income (Group average dollars)", y="Mean Pearson Residual", 
+       title="Pearson Residual Plot of Grouped Income")
 ```
 
 ### Analysis of Case Influence
@@ -305,6 +305,8 @@ ggplot(happiness_aug1, aes(x=case, y=.cooksd))+
   geom_point()+
   labs(x="Index", y="Cook's Distance", 
        title="Cooks Distances for Model")#No apparent concerning values >1
+which(happiness_aug1$.cooksd>.05)
+
   #Examine Leverage
 ggplot(happiness_aug1, aes(x=case, y=.hat))+
   geom_point()+
