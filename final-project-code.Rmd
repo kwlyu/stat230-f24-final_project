@@ -44,55 +44,25 @@ happiness_cleaned <- happiness_raw %>%
     race = if_else(race == "White", "White", "Non White"),
     gender = if_else(gender1 == "MALE", "Male", "Female")
   ) %>% 
-  select(-gender1)
+  select(-gender1) %>% 
+  drop_na()
 
 happiness_recode <- happiness_cleaned %>% 
   mutate(happy = if_else(happy == "Not too happy", 0, 1)) %>% 
   drop_na() 
 
 write.csv(happiness_recode, file = "happiness_recode.csv")
+
+# vars to iterate over later
+quant_vars <- c("commute", "realrinc", "educ")
+cat_vars <- c("gender", "race")
 ```
 
 ## EDA
 
-```{r}
+```{r Distribution Plots}
 ggpairs(happiness_cleaned)
 
-# Density plot for happiness by commute time
-ggplot(happiness_cleaned, aes(x = happy, y = commute, fill = happy)) +
-  geom_boxplot() +
-  labs(title = "Commute Time Distribution by Happiness Level", 
-       x = "Commute Time (minutes)", 
-       fill = "Happiness Level")
-
-# Boxplot of income by happiness level
-ggplot(happiness_cleaned, aes(x = happy, y = realrinc, fill = happy)) +
-  geom_boxplot() +
-  labs(title = "Income Distribution by Happiness Level", 
-       x = "Happiness Level", 
-       y = "Real Income",
-       fill = "Happiness Level")
-
-# Bar plot of happiness level by education level
-ggplot(happiness_cleaned, aes(x = educ, fill = happy)) +
-  geom_bar(position = "fill") +
-  labs(title = "Proportion of Happiness Levels by Education Level", 
-       x = "Education Level", 
-       y = "Proportion",
-       fill = "Happiness Level") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-# Faceted bar plot for happiness levels by race and gender
-ggplot(happiness_cleaned, aes(x = gender, fill = happy)) +
-  geom_bar(position = "fill") +
-  facet_wrap(~ race) +
-  labs(title = "Proportion of Happiness by Race and Gender", 
-       x = "Gender", 
-       y = "Proportion",
-       fill = "Happiness Level")
-```
-
-```{r}
 # Boxplot for happiness by commute time
 plot1 <- ggplot(happiness_cleaned, aes(x = happy, y = commute, fill = happy)) +
   geom_boxplot() +
@@ -134,100 +104,142 @@ plot5 <- ggplot(happiness_cleaned, aes(x = commute, fill = happy)) +
 grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
 ```
 
+```{r Jitter Plots}
+scatter_jitter_plots <- function(quant_vars, cat_vars, alpha = 0.5, jitter_width = 0.2, jitter_height = 0.2) {
+  # Helper function to create a single scatterplot
+  scatter_jitter_fn <- function(quant_var, cat_var) {
+    # Convert variable names to symbols
+    quant_sym <- rlang::sym(quant_var)
+    cat_sym <- rlang::sym(cat_var)
+    
+    # Create the plot
+    ggplot(happiness_recode, aes(x = !!quant_sym, y = happy, color = !!cat_sym)) +
+      geom_jitter(width = jitter_width, height = jitter_height, alpha = alpha) +
+      labs(
+        y = "Happy",
+        x = str_c(quant_var),
+        color = cat_var
+      ) +
+      scale_y_continuous(breaks = c(0, 1))
+  }
+  
+  # Initialize an empty list to store plots
+  plot_list <- list()
+  
+  # Iterate over all combinations of quantitative and categorical variables
+  for (quant_var in quant_vars) {
+    for (cat_var in cat_vars) {
+      # Generate the plot and store it in the list
+      plot_name <- paste(quant_var, cat_var, sep = "_")
+      plot_list[[plot_name]] <- scatter_jitter_fn(quant_var, cat_var)
+    }
+  }
+  
+  # Return the list of plots
+  return(plot_list)
+}
+
+scatter_jitter_plots(quant_vars, cat_vars, alpha = 0.5, jitter_width = 0.2, jitter_height = 0.2)
+
+```
+
+```{r Empirical Log Odds}
+empirical_log_odds_plot <- function(quant_vars, cat_vars, scale = "lin") {
+  # Helper function to create a single plot
+  empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
+    # Convert strings to symbols
+    quant_group <- rlang::sym(quant_var)
+    
+    # Data transformation
+    happiness_ag <- happiness_recode %>% 
+      mutate(quant_grouped = ntile(!!quant_group, n = 7)) %>% 
+      group_by(quant_grouped, !!rlang::sym(cat_var)) %>%  # Include categorical variable in grouping
+      summarize(
+        quant_grouped_med = median(!!quant_group), # Median of quant_var
+        p = sum(happy == 1) / n(), # Proportion happy
+        log_odds = log(p / (1 - p)), # Log odds
+        .groups = "drop" # Avoid warning about grouping
+      ) %>% 
+      mutate(x_var = if (scale == "log") log(quant_grouped_med) else quant_grouped_med) # Add x_var based on scale
+    
+    # Set the x-axis label
+    x_lab <- str_c(if (scale == "log") "Logged Grouped Median of " else "Grouped Median of ", quant_var)
+    
+    # Create the plot
+    ggplot(happiness_ag, 
+           aes(x = x_var, y = log_odds, color = !!rlang::sym(cat_var))) + 
+      geom_point() +
+      geom_smooth(method = "lm", se = FALSE) +
+      labs(x = x_lab, y = "Empirical Log Odds", color = cat_var)
+  }
+  
+  # Initialize an empty list to store plots
+  plot_list <- list()
+  
+  # Loop over all combinations of quantitative and categorical variables
+  for (quant_var in quant_vars) {
+    for (cat_var in cat_vars) {
+      # Generate the plot and store it in the list
+      plot_name <- paste(quant_var, cat_var, sep = "_")
+      plot_list[[plot_name]] <- empirical_plot_fn(quant_var, cat_var, scale)
+    }
+  }
+  
+  # Return the list of plots
+  return(plot_list)
+}
+
+empirical_log_odds_plot(quant_vars = quant_vars, cat_vars = cat_vars, scale = "lin")
+```
 
 ## Logistic Regression
 
 ```{r}
-happiness_glm <- glm(happy ~ commute + realrinc + educ + race + gender, 
+happiness_glm_base <- glm(happy ~ commute + realrinc + educ + race + gender, 
+                     data = happiness_recode, family = binomial)
+happiness_glm_int <- glm(happy ~ (commute + realrinc + educ) * race + gender, 
                      data = happiness_recode, family = binomial)
 
-summary(happiness_glm)
-vif(happiness_glm)
-happiness_aug1 <- augment(happiness_glm, data=happiness_recode,
-                          type.residuals="pearson")
+summary(happiness_glm_int)
+vif(happiness_glm_base)
 
-happiness_aug1$C_grps <- ntile(happiness_recode$commute, n = 20)
-happiness_resid1 <- happiness_aug1 %>%
-  group_by(C_grps) %>%
-  summarize(C_grps_median = median(C_grps), # median D of groups
-            resid_mean = mean(.resid)) # mean residual
-
-ggplot(happiness_resid1, aes(x = C_grps_median, y = resid_mean)) + 
-  geom_point() + 
-  geom_hline(yintercept = 0)
-
-happiness_aug1$Y_grps <- ntile(happiness_recode$realrinc, n = 20)
-happiness_resid2 <- happiness_aug1 %>%
-  group_by(Y_grps) %>%
-  summarize(Y_grps_median = median(Y_grps), # median D of groups
-            resid_mean = mean(.resid)) # mean residual
-
-ggplot(happiness_resid2, aes(x = Y_grps_median, y = resid_mean)) + 
-  geom_point() + 
-  geom_hline(yintercept = 0)
-```
-
-```{r}
-empirical_plot_fn <- function(quant_var, cat_var, scale = "lin") {
-  # Convert strings to symbols
-  quant_group <- rlang::sym(quant_var)
-  cat_group <- rlang::sym(cat_var)
-  
-  happiness_ag <- happiness_recode %>% 
-    group_by(!!quant_group, !!cat_group) %>% 
-    summarize(
-      p = sum(happy == 1) / n(), # Proportion happy
-      log_odds = log(p / (1 - p)), # Avoid log issues
-      .groups = "drop" # Avoid warning about grouping
-    )
-  
-  # Add a column for x_var based on the scale
-  happiness_ag <- happiness_ag %>%
-    mutate(x_var = if (scale == "log") log(!!quant_group) else !!quant_group)
-  
-  # Set the x-axis label
-  x_lab <- str_c(if (scale == "log") "Log of " else "", quant_var)
-  
-  # Plot using precomputed x_var
-  ggplot(happiness_ag, 
-         aes(x = x_var, y = log_odds, color = !!cat_group)) + 
-    geom_point() +
-    labs(x = x_lab, y = "Empirical Log Odds")
-}
-
-
-# Iterate over all different combinations
-# vars to iterate over
-quant_vars <- c("commute", "realrinc", "educ")
-cat_vars <- c("gender", "race")
-# init empty list to store
-empirical_log_odds_plot <- list()
-for (quant_var in quant_vars) {
-  for (cat_var in cat_vars) {
-    # Generate the plot and store it in the list
-    plot_name <- paste(quant_var, cat_var, sep = "_")
-    empirical_log_odds_plot[[plot_name]] <- empirical_plot_fn(quant_var = quant_var, cat_var = cat_var)
+quant_resid_plot <- function(model = happiness_glm_int) {
+  happiness_aug <- augment(model, data=happiness_recode,
+                           type.residuals="pearson") %>% 
+      mutate(commute_grps = ntile(happiness_recode$commute, n = 20),
+             educ_grps = ntile(happiness_recode$educ, n = 20),
+             realrinc_grps = ntile(happiness_recode$realrinc, n = 20))
+  plots <- list()
+  for (var in quant_vars) {
+    group_col <- paste0(var, "_grps")
+    group_name <- rlang::sym(group_col)
+    
+    happiness_quant_resid <- happiness_aug %>%
+      group_by(!!group_name) %>%
+      summarize(
+        group_median = median(happiness_recode[[var]], na.rm = TRUE), # Median of the original variable
+        resid_mean = mean(.resid, na.rm = TRUE) # Mean of residuals
+      )
+    
+    p <- ggplot(happiness_quant_resid, aes(x = !!group_name, y = resid_mean)) +
+      geom_point() +
+      geom_hline(yintercept = 0) +
+      labs(
+        title = paste("Residuals vs", var),
+        x = paste("Grouped ", var),
+        y = "Mean Residual"
+      )
+    
+    plots[[var]] <- p
   }
+  return(plots)
 }
-empirical_log_odds_plot
-commute_v_gender <- ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
-  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
-  labs(y = "Happy", x = "Commute Time", color = "Gender") +
-  scale_y_continuous(breaks = c(0, 1))
-edu_v_gender <- ggplot(happiness_recode, aes(x = commute, y = happy, color = gender)) +
-  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
-  labs(y = "Happy", x = "Education", color = "Gender") +
-  scale_y_continuous(breaks = c(0, 1))
-ggplot(happiness_recode, aes(x = realrinc, y = happy, color = gender)) +
-  geom_jitter(width = 0.2, height = 0.2, alpha = 0.3) +
-  labs(y = "Happy", x = "Real Income", color = "Gender") +
-  scale_y_continuous(breaks = c(0, 1))
 
-(empirical_log_odds_plot$commute_gender | empirical_log_odds_plot$educ_gender) / (commute_v_gender | edu_v_gender)
-  #Notes (by Jackson for Interaction Reference)
-    #Concern for interaction between commute and gender
-      #Concern for interaction between education and gender
+quant_resid_plot()
+
+
 ```
+
 
 ##### Becca's section
 
