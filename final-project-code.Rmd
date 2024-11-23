@@ -139,8 +139,9 @@ scatter_jitter_plots <- function(quant_vars, cat_vars, alpha = 0.5, jitter_width
   return(plot_list)
 }
 
-scatter_jitter_plots(quant_vars, cat_vars, alpha = 0.5, jitter_width = 0.2, jitter_height = 0.2)
-
+scatt_results <- scatter_jitter_plots(quant_vars, cat_vars, alpha = 0.5, jitter_width = 0.2, jitter_height = 0.2)
+grid.arrange(scatt_results$commute_gender, scatt_results$commute_race, scatt_results$realrinc_gender,
+             scatt_results$realrinc_race, scatt_results$educ_gender, scatt_results$educ_race, ncol = 3)
 ```
 
 ```{r Empirical Log Odds}
@@ -189,7 +190,13 @@ empirical_log_odds_plot <- function(quant_vars, cat_vars, scale = "lin") {
   return(plot_list)
 }
 
-empirical_log_odds_plot(quant_vars = quant_vars, cat_vars = cat_vars, scale = "lin")
+emp_log_odds_result <- empirical_log_odds_plot(quant_vars = quant_vars, 
+                                               cat_vars = cat_vars, 
+                                               scale = "lin")
+grid.arrange(emp_log_odds_result$commute_race, emp_log_odds_result$realrinc_race, 
+             emp_log_odds_result$educ_race, ncol = 3)
+grid.arrange(emp_log_odds_result$commute_gender, emp_log_odds_result$realrinc_gender,
+             emp_log_odds_result$educ_gender, ncol = 3)
 ```
 
 ## Logistic Regression
