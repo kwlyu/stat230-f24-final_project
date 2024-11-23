@@ -194,7 +194,7 @@ empirical_log_odds_plot(quant_vars = quant_vars, cat_vars = cat_vars, scale = "l
 
 ## Logistic Regression
 
-```{r}
+```{r Interaction Model}
 happiness_glm_base <- glm(happy ~ commute + realrinc + educ + race + gender, 
                      data = happiness_recode, family = binomial)
 happiness_glm_int <- glm(happy ~ (commute + realrinc + educ) * race + gender, 
@@ -223,11 +223,11 @@ quant_resid_plot <- function(model = happiness_glm_int) {
     
     p <- ggplot(happiness_quant_resid, aes(x = !!group_name, y = resid_mean)) +
       geom_point() +
-      geom_hline(yintercept = 0) +
+      geom_hline(yintercept = 0, linetype="dotted") +
       labs(
         title = paste("Residuals vs", var),
         x = paste("Grouped ", var),
-        y = "Mean Residual"
+        y = "Mean Pearson Residual"
       )
     
     plots[[var]] <- p
@@ -235,10 +235,10 @@ quant_resid_plot <- function(model = happiness_glm_int) {
   return(plots)
 }
 
-quant_resid_plot()
+quant_resid_plot()$commute | quant_resid_plot()$realrinc | quant_resid_plot()$educ
 ```
 
-```{r}
+```{r Model Selection}
 happiness_glm_int2 <- glm(happy ~ commute + (realrinc + educ) * race + gender, 
                      data = happiness_recode, family = binomial)
 
@@ -271,6 +271,62 @@ summary(forwardSelectModel)
 
 anova(happiness_glm_int2, backwardSelectModel, test = "LRT")
 anova(happiness_glm_int2, forwardSelectModel, test = "LRT")
+```
+
+```{r Linear Combination}
+compute_linear_combination <- function(model, coef_indices, conf_level = 0.95) {
+  # Extract coefficients
+  coef_values <- model$coefficients[coef_indices]
+  
+  # Point estimate
+  linear_comb <- sum(coef_values)
+  
+  # Cov MTRX
+  cov_matrix <- vcov(model)[coef_indices, coef_indices]
+  
+  # Joint SE
+  linear_comb_se <- sqrt(sum(diag(cov_matrix)) + 
+                           2 * sum(cov_matrix[lower.tri(cov_matrix)]))
+  
+  # Test statistic
+  test_stat <- linear_comb / linear_comb_se
+  
+  # two sided p-val, normal dist
+  p_value <- 2 * pnorm(abs(test_stat), lower.tail = FALSE)
+  
+  # CI
+  z_value <- qnorm(1 - (1 - conf_level) / 2)
+  conf_int <- linear_comb + c(-1, 1) * z_value * linear_comb_se
+  
+  # Untransformed response (exponential)
+  untransformed <- exp(linear_comb)
+  untransformed_ci <- exp(conf_int)
+  
+  # Return results as a list
+  list(
+    linear_comb = linear_comb,
+    se = linear_comb_se,
+    test_stat = test_stat,
+    p_value = p_value,
+    conf_int = conf_int,
+    untransformed = untransformed,
+    untransformed_ci = untransformed_ci
+  )
+}
+
+exp(confint(happiness_glm_int2))
+
+(Y_wht_est <- compute_linear_combination(
+  model = happiness_glm_int2,
+  coef_indices = c(3, 7),
+  conf_level = 0.95
+))
+
+(edu_wht_est <- compute_linear_combination(
+  model = happiness_glm_int2,
+  coef_indices = c(4, 8),
+  conf_level = 0.95
+))
 ```
 
 
