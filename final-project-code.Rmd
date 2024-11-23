@@ -194,8 +194,8 @@ emp_log_odds_result <- empirical_log_odds_plot(quant_vars = quant_vars,
                                                cat_vars = cat_vars, 
                                                scale = "lin")
 grid.arrange(emp_log_odds_result$commute_race, emp_log_odds_result$realrinc_race, 
-             emp_log_odds_result$educ_race, ncol = 3)
-grid.arrange(emp_log_odds_result$commute_gender, emp_log_odds_result$realrinc_gender,
+             emp_log_odds_result$educ_race, 
+             emp_log_odds_result$commute_gender, emp_log_odds_result$realrinc_gender,
              emp_log_odds_result$educ_gender, ncol = 3)
 ```
 
@@ -245,6 +245,38 @@ quant_resid_plot <- function(model = happiness_glm_int) {
 quant_resid_plot()$commute | quant_resid_plot()$realrinc | quant_resid_plot()$educ
 ```
 
+```{r Cluster Dependence}
+cat_resid_plot <- function(model, data = happiness_recode, 
+                           cat_vars_list = cat_vars) {
+  # Augment data with residuals
+  happiness_aug <- augment(model, data = data, type.residuals = "pearson")
+  # Initialize an empty list to store plots
+  plots <- list()
+  
+  # Loop through categorical variables
+  for (var in cat_vars_list) {
+    # Boxplot
+    p <- ggplot(happiness_aug, aes(x = !!sym(var), y = .resid)) +
+      geom_boxplot() +
+      geom_hline(yintercept = 0, linetype = "dotted", color = "red") +
+      labs(
+        title = paste("Residuals by", var),
+        x = var,
+        y = "Pearson Residuals"
+      )
+    # Add plot to list
+    plots[[var]] <- p
+  }
+  
+  # Return the list of plots
+  return(plots)
+}
+
+(cluster_results <- cat_resid_plot(happiness_glm_int2))
+grid.arrange(cluster_results$gender, cluster_results$race, ncol = 2)
+```
+
+
 ```{r Model Selection}
 happiness_glm_int2 <- glm(happy ~ commute + (realrinc + educ) * race + gender, 
                      data = happiness_recode, family = binomial)
@@ -252,9 +284,10 @@ happiness_glm_int2 <- glm(happy ~ commute + (realrinc + educ) * race + gender,
 summary(happiness_glm_int2)
 
 anova(happiness_glm_base, happiness_glm_int2, test = "LRT")
-anova(happiness_glm_int, happiness_glm_int2, test = "LRT")
+anova(happiness_glm_int2, happiness_glm_int, test = "LRT")
 
-quant_resid_plot(happiness_glm_int2)
+quant_resid_plot(happiness_glm_int2) -> resid_results
+grid.arrange(resid_results$commute, resid_results$realrinc, resid_results$educ, ncol = 3)
 ```
 
 ```{r Backward and Forward Selection, cache=TRUE, message=FALSE, warning=FALSE}
@@ -321,19 +354,43 @@ compute_linear_combination <- function(model, coef_indices, conf_level = 0.95) {
   )
 }
 
-exp(confint(happiness_glm_int2))
+round((exp(5*confint(happiness_glm_int2)) - 1)*100, 2)
+round((exp(5*happiness_glm_int2$coefficients) - 1)*100, 2)
 
 (Y_wht_est <- compute_linear_combination(
   model = happiness_glm_int2,
   coef_indices = c(3, 7),
   conf_level = 0.95
 ))
+round((exp(5000*Y_wht_est$linear_comb) - 1)*100, 2)
+round((exp(5000*Y_wht_est$conf_int) - 1)*100, 2)
 
 (edu_wht_est <- compute_linear_combination(
   model = happiness_glm_int2,
   coef_indices = c(4, 8),
   conf_level = 0.95
 ))
+round((exp(edu_wht_est$linear_comb) - 1)*100, 2)
+round((exp(edu_wht_est$conf_int) - 1)*100, 2)
+```
+
+```{r Influential Stats}
+resid_panel(happiness_glm_int2, plots = c("cookd", "lev"))
+plot(happiness_glm_int2, which = 5)
+plot(happiness_glm_int2, which = 4)
+
+happiness_aug <- happiness_aug %>% 
+  mutate(case = row_number())
+avg_lev <- happiness_aug %>% pull(.hat) %>% mean()
+
+ggplot(happiness_aug, aes(x = case, y = .hat)) +
+  geom_point() +
+  geom_hline(yintercept = 2 * avg_lev, color = "red", linetype = "dashed") +
+  labs(
+    title = "Leverage Values by Case Number",
+    x = "Case Number",
+    y = "Leverage"
+  ) 
 ```
 
 
