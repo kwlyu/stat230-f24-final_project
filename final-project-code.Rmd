@@ -152,7 +152,7 @@ empirical_log_odds_plot <- function(quant_vars, cat_vars, scale = "lin") {
     
     # Data transformation
     happiness_ag <- happiness_recode %>% 
-      mutate(quant_grouped = ntile(!!quant_group, n = 7)) %>% 
+      mutate(quant_grouped = ntile(!!quant_group, n = 8)) %>% 
       group_by(quant_grouped, !!rlang::sym(cat_var)) %>%  # Include categorical variable in grouping
       summarize(
         quant_grouped_med = median(!!quant_group), # Median of quant_var
@@ -245,6 +245,7 @@ happiness_glm_int2 <- glm(happy ~ commute + (realrinc + educ) * race + gender,
 summary(happiness_glm_int2)
 
 anova(happiness_glm_base, happiness_glm_int2, test = "LRT")
+anova(happiness_glm_int, happiness_glm_int2, test = "LRT")
 
 quant_resid_plot(happiness_glm_int2)
 ```
