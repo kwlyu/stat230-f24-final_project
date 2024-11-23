@@ -249,6 +249,29 @@ anova(happiness_glm_base, happiness_glm_int2, test = "LRT")
 quant_resid_plot(happiness_glm_int2)
 ```
 
+```{r Backward and Forward Selection, cache=TRUE, message=FALSE, warning=FALSE}
+set.seed(67393937)
+
+upper_model <- glm(happy ~ (commute + realrinc + educ + race + gender)^2,
+                 data = happiness_recode, family = binomial)
+lower_model <- glm(happy ~ 1, data = happiness_recode, family = binomial)
+
+#backward selection
+backwardSelectModel <- stepAIC(upper_model, scope = list(lower = lower_model, 
+                                                         upper = upper_model),
+                               direction = "backward")
+summary(backwardSelectModel)
+
+#forward selection
+forwardSelectModel <- stepAIC(lower_model, scope = list(lower = lower_model, 
+                                                         upper = upper_model),
+                               direction = "forward")
+summary(forwardSelectModel)
+
+anova(happiness_glm_int2, backwardSelectModel, test = "LRT")
+anova(happiness_glm_int2, forwardSelectModel, test = "LRT")
+```
+
 
 ##### Becca's section
 
